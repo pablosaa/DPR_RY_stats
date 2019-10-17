@@ -6,8 +6,10 @@
 clear all;
 close all;
 
-SO(1) = load('DPR_RY_stats_RRth0.20.mat');
-SO(2) = load('DPR_RY_stats_RRth0.50.mat');
+PRINT_FLAG = false;
+
+SO(1) = load('../data/DPR_RY_stats_RRth0.20.mat');
+SO(2) = load('../data/DPR_RY_stats_RRth0.50.mat');
 %Wiqr = [1.5 5 Inf]';
 N_test = length(SO(1).Wiqr);
 Tiqr = {'97.0','99.3','100'};
@@ -51,7 +53,8 @@ cellfun(@(x) set(x(2,:), 'MarkerSize', 10, 'MarkerFaceColor', [1 1 1]*0.5,...
 								 'Marker', 'o', 'Color', [.2 .5 .8]), pcr);
 
 set(ax, 'YTick', [1:N_test], 'YLim', [0.5 3.5], 'XGrid', 'on', 'TickDir', 'out',...
-		'PlotBoxAspectRatio', [0.9 0.8 0.8778], 'FontSize', 13);
+		'PlotBoxAspectRatio', [0.9 0.8 0.8778], 'FontSize', 13,...
+		'TickLength', [0.02 0.04], 'XMinorTick', 'on');
 set(ax(1),  'YTickLabel', Tiqr);
 set(ax(2:3), 'YTickLabel', '');
 tmp = get(ax, 'Position');
@@ -97,7 +100,7 @@ bx(3,1) = subplot(3,2,5);
 tyr{5}(:, 1) = plot([1:N_test], SO(1).TypeubRMSE(:, iconv), '--^');
 hold on;
 tyr{5}(:, 2) = plot([1:N_test], SO(2).TypeubRMSE(:, iconv), '-^');
-ylabel('ubRMSE [mm hr^{-1}]');
+ylabel('ubRMSD [mm hr^{-1}]');
 xlabel('Data included [%]');
 
 bx(3,2) = subplot(3,2,6);
@@ -115,17 +118,21 @@ LimY(2,:) = [-1.1 -0.3];
 LimY(3,:) = [.8 2.4];
 
 tmp0 = get(bx, 'Position');
-tmp2 = cellfun(@(x) [1 0.97 1.18 1.27].*x, tmp0, 'UniformOutput', 0);
+tmp2 = cellfun(@(x) [1 0.97 1.15 1.27].*x, tmp0, 'UniformOutput', 0);
 
 for i=1:3,
 	set(bx(i,:), 'YLim', LimY(i,:));
 	arrayfun(@(j) set(bx(i,j), 'Position', tmp2{i+3*(j-1)}), [1:2]);
 end
-set(bx(:,2), 'YTickLabel', '');
+%set(bx(:,2), 'YTickLabel', '');
 set(bx(1:2,:), 'XTickLabel', '');
 set(bx(3,:), 'XTick', [1:3], 'XTickLabel', Tiqr);
-set(bx, 'XLim', [.6 3.4], 'FontSize', 12, 'TickDir', 'out', 'YGrid', 'on');
+set(bx, 'XLim', [.6 3.4], 'FontSize', 13, 'TickDir', 'out', 'YGrid', 'on',...
+		'YMinorTick', 'on', 'TickLength',[0.02 0.04]);
 
-
+if PRINT_FLAG,
+	print('-f1', '-dpng', './plots/Statistics_DPR_RY_2RRth.png');
+	print('-f2', '-dpng', './plots/RainType_Statistics_DPR_RY_2RRth.png');
+end
 
 % end of script.

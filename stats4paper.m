@@ -5,13 +5,14 @@ clear all;
 close all;
 
 PLOT_FLAG = true;
-MATF_FLAG = true;
+MATF_FLAG = false;
+PRINT_FLAG = false;
 
 RRth = 0.5; % rain rate threshold to consider 0.2 (DPR specs), 0.5 mm/h (Technic)
 Wiqr = [1.5 3 Inf]';  % sigma factors
 N_test = 2; % number of test e.g. 2 for DPRns and DPRans.
 
-load('DPR_RADOLAN.mat');
+load('../data/DPR_RADOLAN.mat');
 
 % indices for DPRns and RY above threshold:
 ii = ~(isnan(RY) | isnan(DPRns)) & (DPRns>=RRth & RY>=RRth) ;
@@ -65,7 +66,7 @@ Nperc = Ntot./cellfun(@length, delRR);
 %% Plotting the precipitation DPRns and DPRans database:
 for i=1:2,
 	if ~PLOT_FLAG, continue; end
-	idxstat = 2;
+	idxstat = 1;
 	RRmax = 1e3;
 	NNmax = 1e3;
 	figure(i);
@@ -100,18 +101,18 @@ for i=1:2,
 						 'FontSize',14);
 	hbar = colorbar;
 	ylabel(hbar, 'log10(N)');
-	colormap(jet); %(parula + jet)/2);
+	colormap((summer + jet)/2);
 	hold on;
 	t11 = plot(RRx, RRx, '--k', 'LineWidth', 2);
 
 	l99 = loglog([RRx 1 RRx],[RRlow NaN RRhig],'--r','LineWidth',2);
-	lfit = loglog(RRx, Yfit, '-', 'LineWidth', 2, 'Color', [.5 .5 .5]);
+	lfit = loglog(RRx, Yfit, '-', 'LineWidth', 2, 'Color', [0 .447 .8710]);
 	set(gca,'XScale','log','YScale','log','TickDir','out',...
-			'XLim',[RRth RRmax],'YLim',[RRth RRmax],'TickLength',[0.02 0.04],...
+			'XLim',[RRth RRmax],'YLim',[RRth RRmax], 'TickLength',[0.02 0.04],...
 			'CLim', [0 log10(NNmax)], 'FontSize',13);
 	set(hbar, 'FontSize',11, 'TickDir', 'out');
 	% legend
-	txl = text(50, RRmax/2, sprintf('R = %4.3f\nBIAS = %4.2f\nRMSE = %3.2f\nubRMSE = %3.2f\nN = %d',...
+	txl = text(50, RRmax/2, sprintf('R = %4.3f\nBIAS = %4.2f\nRMSD = %3.2f\nubRMSD = %3.2f\nN = %d',...
 															CorrR(idxstat,i), BIAS(idxstat,i), RMSE(idxstat,i),...
 															ubRMSE(idxstat,i), Ntot(idxstat,i)),...
 						 'FontSize',13, 'BackgroundColor', 'w', 'EdgeColor', [.4 .4 .4]);
@@ -180,23 +181,45 @@ TypeNperc = TypeNtot./cellfun(@length, TypdelRR);
 %% Plotting the precipitation type database:
 for i=1:N_type,
 	if ~PLOT_FLAG, continue; end
+	NNmax = [2 2.5 2 2.5]; %0.5e3;
 	figure(i+2);
 	delRRmean = mean(TypdelRR{i});
-	RRx = linspace(RRth, 50, 50);
+	RRx = logspace(log10(RRth), log10(RRmax), 100);
 	RRy = RRx + delRRmean;
+
+	% best fit line:
+	Typfit = polyfit(log10(TypXgr{i}(InIdx{i}{idxstat})), log10(TypYsr{i}(InIdx{i}{idxstat})),1);
+	TyYfit = polyval(Typfit, RRx);
+
 	XEDGES = logspace(log10(RRth), 2, 70);
 	NN = histcounts2(TypXgr{i}, TypYsr{i}, XEDGES, XEDGES);
 	NN(NN<1) = NaN;
 	pcolor(XEDGES(2:end), XEDGES(2:end), log10(NN'));
 	shading flat;
 	colorbar
-	colormap((parula + jet)/2);
+	colormap((summer + jet)/2);
+	xlabel('RADOLAN RY [mm h^{-1}]');
+	if i<3,
+		ylabel('DPRns [mm h^{-1}]');
+	else
+		ylabel('DPRans [mm h^{-1}]');
+	end
+
 	hold on;
 	t11 = plot(RRx, RRx, '--k','LineWidth',2);
 	%m50 = plot(RRx, RRy, '--b');
 	l99 = loglog([RRx 1 RRx],[Low_th{i}(2,:)+RRy NaN Ups_th{i}(2,:)+RRy],'--r','LineWidth',2);
-	set(gca,'XScale','log','YScale','log','TickDir','out',...
-			'XLim',[RRth 1e2],'YLim',[RRth 1e2],'TickLength',[0.02 0.04]);
+	lfit = loglog(RRx, TyYfit, '-', 'LineWidth', 2, 'Color', [0 .447 .8710]);
+	set(gca,'XScale','log','YScale','log','TickDir','out', 'CLim', [0 NNmax(i)],...
+			'XLim',[RRth RRmax*(1-RRth)],'YLim',[RRth RRmax*(1-RRth)],'TickLength',[0.02 0.04]);
+
+	% legend
+	txl = text(50, 2, sprintf('R = %4.3f\nBIAS = %4.2f\nRMSD = %3.2f\nubRMSD = %3.2f\nN = %d',...
+														TypeCorrR(idxstat,i), TypeBIAS(idxstat,i), TypeRMSE(idxstat,i),...
+														TypeubRMSE(idxstat,i), TypeNtot(idxstat,i)),...
+						 'FontSize',13, 'BackgroundColor', 'w', 'EdgeColor', [.4 .4 .4]);
+	lgd = legend([t11 l99 lfit], {'1:1', sprintf('%3.1f%%',100*TypeNperc(idxstat,i)), 'FIT'},'Location','northwest');
+
 end
 
 %% ---------------------------------
@@ -204,11 +227,23 @@ end
 %%
 
 if MATF_FLAG,
-	save(sprintf('DPR_RY_stats_RRth%03.2f.mat',RRth),'CorrR','BIAS','RMSE','ubRMSE','Ntot','Nperc',...
+	save(sprintf('../data/DPR_RY_stats_RRth%03.2f.mat',RRth),'CorrR','BIAS','RMSE','ubRMSE','Ntot','Nperc',...
 			 'TypeCorrR','TypeBIAS','TypeRMSE','TypeubRMSE','TypeNtot','TypeNperc','RRth','Wiqr');
 end
 
+if PRINT_FLAG,
+	print('-f1', '-dpng', sprintf('./plots/DPRns_RY_th%02.1f.png', RRth) );
+	print('-f2', '-dpng', sprintf('./plots/DPRans_RY_th%02.1f.png', RRth) );
+	print('-f3', '-dpng', sprintf('./plots/Convective_DPRns_RY_th%02.1f.png', RRth) );
+	print('-f4', '-dpng', sprintf('../plots/Stratiform_DPRns_RY_th%02.1f.png', RRth) );
+	print('-f5', '-dpng', sprintf('../plots/Convective_DPRans_RY_th%02.1f.png', RRth) );
+	print('-f6', '-dpng', sprintf('../plots/Stratiform_DPRans_RY_th%02.1f.png', RRth) );
+
+end
+
 return;
+
+%% TO BE FINISHED WHEN THE DATA WITH FLAG_PHASE for DPR_ans COME:
 %% --------------------------------------------------------------------
 %% FOR Hydrometeor Phase (liquid, solid, mixed)  !!! NOT VALID, new database to come
 N_phase = 2;
