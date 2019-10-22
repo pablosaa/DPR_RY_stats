@@ -4,7 +4,7 @@
 clear all;
 close all;
 
-PLOT_FLAG = true;
+PLOT_FLAG = false;
 MATF_FLAG = false;
 PRINT_FLAG = false;
 
@@ -19,6 +19,8 @@ ii = ~(isnan(RY) | isnan(DPRns)) & (DPRns>=RRth & RY>=RRth) ;
 
 % indices for DPRAns and RY above threshold:
 kk = ~(isnan(RY) | isnan(DPRans)) & (DPRans>=RRth & RY>=RRth) & DPR_hip<1;
+
+return;
 
 Xgr{1} = RY(ii);
 Ysr{1} = double(DPRns(ii));
@@ -222,7 +224,129 @@ for i=1:N_type,
 
 end
 
-%% ---------------------------------
+
+%% TO BE FINISHED WHEN THE DATA WITH FLAG_PHASE for DPR_ans COME:
+%% --------------------------------------------------------------------
+% FOR Hydrometeor Phase DPRns: (0=solid, 1=mixed, 2=liquid)
+% FOR Hydrometeor Phase DPRans: (0=solid, 1=liquid, otherwise=mixed)
+N_phase = 6;
+phase_flag{1}{1} = round(DPRns_ph)==0 & ii; % 0=solid
+phase_flag{1}{2} = round(DPRns_ph)==2 & ii; % 2=liquid
+phase_flag{1}{3} = round(DPRns_ph)==1 & ii; % 1=mixed
+
+phase_flag{2}{1} = round(DPRans_ph)==0 & kk; % 0=solid
+phase_flag{2}{2} = round(DPRans_ph)==1 & kk; % 1=liquid
+phase_flag{2}{3} = round(DPRans_ph)>0 | round(DPRans_ph)<1 & kk; % mixed
+
+
+PhaXgr{1} = RY(phase_flag{1}{1});
+PhaYsr{1} = double(DPRns(phase_flag{1}{1}));
+
+PhaXgr{2} = RY(phase_flag{1}{2});
+PhaYsr{2} = double(DPRns(phase_flag{1}{2}));
+
+PhaXgr{3} = RY(phase_flag{1}{3});
+PhaYsr{3} = double(DPRns(phase_flag{1}{3}));
+
+PhaXgr{4} = RY(phase_flag{2}{1});
+PhaYsr{4} = double(DPRans(phase_flag{2}{1}));
+
+PhaXgr{5} = RY(phase_flag{2}{2});
+PhaYsr{5} = double(DPRans(phase_flag{2}{2}));
+
+PhaXgr{6} = RY(phase_flag{2}{3});
+PhaYsr{6} = double(DPRans(phase_flag{2}{3}));
+
+
+PhadelRR = cellfun(@minus, PhaYsr, PhaXgr, 'UniformOutput', 0);
+IQR   = cellfun(@(x) quantile(x,[.25 .75]), PhadelRR, 'UniformOutput', 0);
+
+% sigma times factor [N_wiqr x N_test]:
+%%sigma = Wiqr.*cellfun(@std, delRR);
+
+for i=1:N_phase,
+	% Low and Up Threshold (column represent type):
+	[MC Low_th{i} Ups_th{i}] = MedCouple(PhadelRR{i}, Wiqr);
+	%Low_th{i} = IQR{i}(:,1) - sigma(:,i).*diff(IQR{i});
+	%Ups_th{i} = IQR{i}(:,2) + sigma(:,i).*diff(IQR{i});
+	
+	InIdx{i}  = arrayfun(@(a,b) find(PhadelRR{i}>=a & PhadelRR{i}<=b),...
+									 Low_th{i}, Ups_th{i}, 'UniformOutput', 0);	
+
+	% Correlation coefficients:
+	TMPvar = cellfun(@(x) corrcoef(PhaXgr{i}(x), PhaYsr{i}(x)), InIdx{i},'UniformOutput',0);
+	PhaseCorrR(:,i) = cellfun(@(x) x(1,2), TMPvar);
+
+	% BIAS:
+	PhaseBIAS(:,i) = cellfun(@(x) mean(PhaYsr{i}(x) - PhaXgr{i}(x)), InIdx{i});
+
+	% RMSE:
+	PhaseRMSE(:,i) = cellfun(@(x) sqrt(mean((PhaYsr{i}(x) - PhaXgr{i}(x)).^2)), InIdx{i});
+
+	% Total Number of points per class:
+	PhaseNtot(:,i) = cellfun(@length, InIdx{i});
+end
+% ubRMSE:
+PhaseubRMSE = sqrt(PhaseRMSE.^2 - PhaseBIAS.^2);
+
+% Percentage of data per class:
+PhaseNperc = PhaseNtot./cellfun(@length, PhadelRR);
+
+
+%% Plotting the precipitation PHASE database:
+figure;
+idxstat = 1;
+for i=1:N_phase,
+	%if ~PLOT_FLAG, continue; end
+	NNmax = [2.1 2.1 2.1 2.1 2.1 2.1]; %0.5e3;
+	if i==3, continue; end
+	subplot(2,3,i);
+	delRRmean = mean(PhadelRR{i});
+	RRx = logspace(log10(RRth), log10(RRmax), 100);
+	RRy = RRx + delRRmean;
+
+	% best fit line:
+	Phafit = polyfit( PhaXgr{i}(InIdx{i}{idxstat}), PhaYsr{i}(InIdx{i}{idxstat}), 1);
+	PhYfit = polyval(Phafit, RRx);
+
+	XEDGES = logspace(log10(RRth), 2, 70);
+	NN = histcounts2(PhaXgr{i}, PhaYsr{i}, XEDGES, XEDGES);
+	NN(NN<1) = NaN;
+	pcolor(XEDGES(2:end), XEDGES(2:end), log10(NN'));
+	shading flat;
+	if i==2 | i==6,
+		colorbar
+	end
+	colormap((summer + jet)/2);
+	if i>3,
+		xlabel('RADOLAN RY [mm h^{-1}]');
+	end
+	if i==1,
+		ylabel('DPRns [mm h^{-1}]');
+	elseif i==4,
+		ylabel('DPRans [mm h^{-1}]');
+	end
+
+	hold on;
+	t11 = plot(RRx, RRx, '--k','LineWidth',2);
+	%m50 = plot(RRx, RRy, '--b');
+	l99 = loglog([RRx 1 RRx],[Low_th{i}(idxstat,:)+RRy NaN Ups_th{i}(idxstat,:)+RRy],'--r','LineWidth',2);
+	lfit = loglog(RRx, PhYfit, '-', 'LineWidth', 2, 'Color', [0 .447 .8710]);
+	set(gca,'XScale','log','YScale','log','TickDir','out', 'CLim', [0 NNmax(i)],...
+			'XLim',[RRth RRmax*(1-RRth)],'YLim',[RRth RRmax*(1-RRth)],'TickLength',[0.02 0.04]);
+
+	% legend
+	txl = text(50, 2, sprintf('R = %4.3f\nBIAS = %4.2f\nRMSD = %3.2f\nubRMSD = %3.2f\nN = %d',...
+														PhaseCorrR(idxstat,i), PhaseBIAS(idxstat,i), PhaseRMSE(idxstat,i),...
+														PhaseubRMSE(idxstat,i), PhaseNtot(idxstat,i)),...
+						 'FontSize',13, 'BackgroundColor', 'w', 'EdgeColor', [.4 .4 .4]);
+	lgd = legend([t11 l99 lfit], {'1:1', sprintf('%3.1f%%',100*PhaseNperc(idxstat,i)), 'FIT'},'Location','northwest');
+
+end
+
+
+
+%% *************----------------****************
 %% Storing the results in a mat file
 %%
 
@@ -242,47 +366,5 @@ if PRINT_FLAG,
 end
 
 return;
-
-%% TO BE FINISHED WHEN THE DATA WITH FLAG_PHASE for DPR_ans COME:
-%% --------------------------------------------------------------------
-%% FOR Hydrometeor Phase (liquid, solid, mixed)  !!! NOT VALID, new database to come
-N_phase = 2;
-phase_flag{1} = round(DPRns_ph/1e2)==1 & kk; % 1=mixed?
-phase_flag{2} = round(DPRns_ph/1e2)==2 & kk; % 2=liquid
-
-Xgr{1} = RY(phase_flag{1});
-Ysr{1} = double(DPRans(phase_flag{1}));
-
-Xgr{2} = RY(phase_flag{2});
-Ysr{2} = double(DPRans(phase_flag{2}));
-
-delRR = cellfun(@minus, Ysr, Xgr, 'UniformOutput', 0);
-IQR   = cellfun(@(x) quantile(x,[.25 .75]), delRR, 'UniformOutput', 0);
-
-% sigma times factor [N_wiqr x N_test]:
-sigma = Wiqr.*cellfun(@std, delRR);
-
-for i=1:N_phase,
-	% Low and Up Threshold (column represent type):
-	Low_th{i} = IQR{i}(:,1) - sigma(:,i).*diff(IQR{i});
-	Ups_th{i} = IQR{i}(:,2) + sigma(:,i).*diff(IQR{i});
-	InIdx{i}  = arrayfun(@(a,b) find(delRR{i}>=a & delRR{i}<=b),...
-									 Low_th{i}, Ups_th{i}, 'UniformOutput', 0);	
-
-	% Correlation coefficients:
-	TMPvar = cellfun(@(x) corrcoef(Xgr{i}(x), Ysr{i}(x)), InIdx{i},'UniformOutput',0);
-	PhaseCorrR(:,i) = cellfun(@(x) x(1,2), TMPvar);
-
-	% BIAS:
-	PhaseBIAS(:,i) = cellfun(@(x) mean(Ysr{i}(x) - Xgr{i}(x)), InIdx{i});
-
-	% RMSE:
-	PhaseRMSE(:,i) = cellfun(@(x) sqrt(mean((Ysr{i}(x) - Xgr{i}(x)).^2)), InIdx{i});
-
-	% Total Number of points per class:
-	PhaseNtot(:,i) = cellfun(@length, InIdx{i});
-end
-% ubRMSE:
-PhaseubRMSE = sqrt(PhaseRMSE.^2 - PhaseBIAS.^2);
 
 % end of script

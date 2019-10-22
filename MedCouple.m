@@ -6,9 +6,17 @@ function [MC, thLow, thHig] = MedCouple(data, varargin),
 	% (c) 2019, Pablo Saavedra G.
 	% Geophysical Institue, Univesitu of Bergen
 
+	if isempty(data),
+		MC = NaN;
+		thLow = -Inf;
+		thHig = +Inf;
+		return;
+	end
+	
+
 	% Sorting in decreasing order can be done in-place in O(n log n) time
 	X = sort(data, 'descend');
-	xm = median(X);
+	xm = nanmedian(X);
 	xscale = 2*max(abs(X));
 
 	if nargin == 2;
