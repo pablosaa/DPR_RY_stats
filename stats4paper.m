@@ -20,7 +20,6 @@ ii = ~(isnan(RY) | isnan(DPRns)) & (DPRns>=RRth & RY>=RRth) ;
 % indices for DPRAns and RY above threshold:
 kk = ~(isnan(RY) | isnan(DPRans)) & (DPRans>=RRth & RY>=RRth) & DPR_hip<1;
 
-return;
 
 Xgr{1} = RY(ii);
 Ysr{1} = double(DPRns(ii));
@@ -66,11 +65,12 @@ Nperc = Ntot./cellfun(@length, delRR);
 
 
 %% Plotting the precipitation DPRns and DPRans database:
+idxstat = 1;
+RRmax = 1e3;
+NNmax = 1e3;
+
 for i=1:2,
 	if ~PLOT_FLAG, continue; end
-	idxstat = 1;
-	RRmax = 1e3;
-	NNmax = 1e3;
 	figure(i);
 	set(gcf, 'PaperPositionMode','auto', 'Position',[611 508 678 507]);
 
@@ -230,13 +230,13 @@ end
 % FOR Hydrometeor Phase DPRns: (0=solid, 1=mixed, 2=liquid)
 % FOR Hydrometeor Phase DPRans: (0=solid, 1=liquid, otherwise=mixed)
 N_phase = 6;
-phase_flag{1}{1} = round(DPRns_ph)==0 & ii; % 0=solid
-phase_flag{1}{2} = round(DPRns_ph)==2 & ii; % 2=liquid
-phase_flag{1}{3} = round(DPRns_ph)==1 & ii; % 1=mixed
+phase_flag{1}{1} = round(DPRns_ph)==0 & type_flag{1}; % 0=solid
+phase_flag{1}{2} = round(DPRns_ph)==2 & type_flag{1}; % 2=liquid
+phase_flag{1}{3} = round(DPRns_ph)==1 & type_flag{1}; % 1=mixed
 
-phase_flag{2}{1} = round(DPRans_ph)==0 & kk; % 0=solid
-phase_flag{2}{2} = round(DPRans_ph)==1 & kk; % 1=liquid
-phase_flag{2}{3} = round(DPRans_ph)>0 | round(DPRans_ph)<1 & kk; % mixed
+phase_flag{2}{1} = round(DPRans_ph)==0 & type_flag{3}; % 0=solid
+phase_flag{2}{2} = round(DPRans_ph)==1 & type_flag{3}; % 1=liquid
+phase_flag{2}{3} = round(DPRans_ph)>0 | round(DPRans_ph)<1 & type_flag{3}; % mixed
 
 
 PhaXgr{1} = RY(phase_flag{1}{1});
@@ -301,7 +301,7 @@ for i=1:N_phase,
 	NNmax = [2.1 2.1 2.1 2.1 2.1 2.1]; %0.5e3;
 	if i==3, continue; end
 	subplot(2,3,i);
-	delRRmean = mean(PhadelRR{i});
+	delRRmean = nanmean(PhadelRR{i});
 	RRx = logspace(log10(RRth), log10(RRmax), 100);
 	RRy = RRx + delRRmean;
 
