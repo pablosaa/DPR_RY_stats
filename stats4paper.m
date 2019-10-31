@@ -4,7 +4,7 @@
 clear all;
 close all;
 
-PLOT_FLAG = false;
+PLOT_FLAG = true;
 MATF_FLAG = false;
 PRINT_FLAG = false;
 
@@ -230,13 +230,13 @@ end
 % FOR Hydrometeor Phase DPRns: (0=solid, 1=mixed, 2=liquid)
 % FOR Hydrometeor Phase DPRans: (0=solid, 1=liquid, otherwise=mixed)
 N_phase = 6;
-phase_flag{1}{1} = round(DPRns_ph)==0 & type_flag{1}; % 0=solid
-phase_flag{1}{2} = round(DPRns_ph)==2 & type_flag{1}; % 2=liquid
-phase_flag{1}{3} = round(DPRns_ph)==1 & type_flag{1}; % 1=mixed
+phase_flag{1}{1} = round(DPRns_ph)==2 & type_flag{2}; % 0=solid
+phase_flag{1}{2} = round(DPRns_ph)==0 & type_flag{2}; % 2=liquid
+phase_flag{1}{3} = round(DPRns_ph)==1 & type_flag{2}; % 1=mixed
 
-phase_flag{2}{1} = round(DPRans_ph)==0 & type_flag{3}; % 0=solid
-phase_flag{2}{2} = round(DPRans_ph)==1 & type_flag{3}; % 1=liquid
-phase_flag{2}{3} = round(DPRans_ph)>0 | round(DPRans_ph)<1 & type_flag{3}; % mixed
+phase_flag{2}{1} = round(DPRans_ph)==1 & type_flag{4}; % 0=solid
+phase_flag{2}{2} = round(DPRans_ph)==0 & type_flag{4}; % 1=liquid
+phase_flag{2}{3} = round(DPRans_ph)>0 | round(DPRans_ph)<1 & type_flag{4}; % mixed
 
 
 PhaXgr{1} = RY(phase_flag{1}{1});
@@ -295,7 +295,7 @@ PhaseNperc = PhaseNtot./cellfun(@length, PhadelRR);
 
 %% Plotting the precipitation PHASE database:
 figure;
-idxstat = 1;
+idxstat = 3;
 for i=1:N_phase,
 	%if ~PLOT_FLAG, continue; end
 	NNmax = [2.1 2.1 2.1 2.1 2.1 2.1]; %0.5e3;
