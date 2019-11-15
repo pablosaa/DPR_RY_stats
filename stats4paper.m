@@ -8,7 +8,7 @@ PLOT_FLAG = true;
 MATF_FLAG = false;
 PRINT_FLAG = false;
 
-RRth = 0.5; % rain rate threshold to consider 0.2 (DPR specs), 0.5 mm/h (Technic)
+RRth = 0.02; % rain rate threshold to consider 0.2 (DPR specs), 0.5 mm/h (Technic)
 Wiqr = [1.5 3 Inf]';  % sigma factors
 N_test = 2; % number of test e.g. 2 for DPRns and DPRans.
 
